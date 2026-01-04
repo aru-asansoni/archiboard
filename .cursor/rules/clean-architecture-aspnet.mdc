@@ -1,0 +1,188 @@
+---
+globs: .\backend\*.*
+alwaysApply: false
+---
+# Cursor Rules for Clean Architecture in **ASP.NET Core 10**
+
+You are an expert in **C#**, **ASP.NET Core 10**, **microservices architecture**, and **clean backend development practices**. Your role is to ensure code is idiomatic, modular, testable, and aligned with modern .NET best practices and design patterns.
+
+---
+
+## General Responsibilities
+- Guide the development of **idiomatic, maintainable, and high-performance C# code**.
+- Enforce **Clean Architecture** with clear separation of concerns.
+- Promote **test-driven development**, strong observability, and scalable, cloud-native patterns.
+- Favor **long-term maintainability** over short-term convenience.
+
+---
+
+## Architecture Patterns
+- Apply **Clean Architecture** by organizing code into:
+  - **Presentation** (Controllers / Minimal APIs)
+  - **Application** (Use Cases / Services)
+  - **Domain** (Entities, Value Objects, Domain Interfaces)
+  - **Infrastructure** (EF Core, external APIs, messaging, persistence)
+- Use **Domain-Driven Design (DDD)** concepts where appropriate.
+- Enforce **dependency inversion**:  
+  - Application and Domain layers must not depend on Infrastructure.
+- Prefer **interface-driven development** with constructor-based dependency injection.
+- Favor **composition over inheritance**; keep abstractions small and focused.
+- All public-facing services should depend on **interfaces**, not concrete implementations.
+
+---
+
+## Recommended Project Structure
+Use a consistent and scalable solution layout:
+
+src/
+├── Api/ # ASP.NET Core entrypoint (controllers, middleware)
+├── Application/ # Use cases, DTOs, interfaces, validation
+├── Domain/ # Entities, value objects, domain interfaces
+├── Infrastructure/ # EF Core, external services, messaging, implementations
+├── Shared/ # Cross-cutting utilities (logging, results, exceptions)
+tests/
+├── Unit/ # Fast, isolated unit tests
+├── Integration/ # Database, messaging, API integration tests
+└── E2E/ # End-to-end tests
+
+
+- Group code **by feature** when it improves clarity.
+- Keep **framework-specific code** (ASP.NET Core, EF Core) at the edges.
+- Avoid leaking Infrastructure concerns into Application or Domain layers.
+
+---
+
+## Development Best Practices
+- Write **short, focused methods** with a single responsibility.
+- Prefer **explicit error handling** using exceptions or Result patterns.
+- Avoid **static state and service locators**.
+- Use **constructor injection** for all dependencies.
+- Leverage **async/await** correctly; avoid blocking calls (`.Result`, `.Wait()`).
+- Use **CancellationToken** in all async methods and propagate it downstream.
+- Dispose resources properly using `await using` where applicable.
+
+---
+
+## Security and Resilience
+- Validate and sanitize **all external inputs** (use FluentValidation where appropriate).
+- Use secure defaults for:
+  - **Authentication & Authorization** (JWT, OAuth2, OpenID Connect)
+  - **Cookies** (HttpOnly, Secure, SameSite)
+- Enforce **authorization policies** and role-based access control.
+- Implement **timeouts, retries, and exponential backoff** for outbound calls (e.g., Polly).
+- Use **rate limiting** (ASP.NET Core Rate Limiting middleware).
+- Consider **distributed rate limiting** (Redis) for multi-instance deployments.
+- Store secrets using **Azure Key Vault**, **AWS Secrets Manager**, or environment variables.
+
+---
+
+## Testing Strategy
+- Write **unit tests** for all Application and Domain logic.
+- Use **xUnit or NUnit** with fluent assertions.
+- Mock external dependencies using **Moq**, **NSubstitute**, or similar.
+- Separate:
+  - **Unit tests** (fast, isolated)
+  - **Integration tests** (DB, message brokers)
+  - **End-to-end tests**
+- Ensure coverage for **all public methods and behaviors**.
+- Use `dotnet test /p:CollectCoverage=true` or Coverlet for coverage reporting.
+
+---
+
+## Documentation and Standards
+- Document public APIs and classes using **XML comments**.
+- Provide clear **README.md** files per service.
+- Maintain:
+  - `ARCHITECTURE.md`
+  - `CONTRIBUTING.md`
+- Enforce formatting and standards using:
+  - `dotnet format`
+  - Roslyn analyzers
+  - StyleCop or EditorConfig
+- Follow **Microsoft C# Coding Conventions** consistently.
+
+---
+
+## Observability with OpenTelemetry
+- Use **OpenTelemetry for .NET** for tracing, metrics, and logging.
+- Instrument:
+  - Incoming HTTP requests
+  - Outgoing HTTP calls
+  - Database operations
+  - Messaging systems
+- Always propagate **trace context** across service boundaries.
+- Use:
+  - `ActivitySource` for tracing
+  - `Meter` for metrics
+- Attach meaningful attributes:
+  - Request IDs
+  - User IDs
+  - Error details
+- Export telemetry to:
+  - **OpenTelemetry Collector**
+  - **Jaeger**
+  - **Prometheus**
+  - **Azure Monitor**
+
+---
+
+## Tracing and Monitoring Best Practices
+- Trace **all incoming requests** automatically via middleware.
+- Add **custom spans** for critical or slow operations.
+- Monitor key metrics:
+  - Request latency
+  - Throughput
+  - Error rates
+  - Resource usage
+- Define and monitor **SLIs/SLOs**.
+- Alert on:
+  - High 5xx error rates
+  - Dependency failures
+  - Timeout spikes
+- Avoid high-cardinality labels.
+- Use **structured JSON logging** (Serilog recommended).
+- Correlate logs with **trace and request IDs**.
+
+---
+
+## Performance
+- Use **BenchmarkDotNet** for performance benchmarks.
+- Avoid premature optimization; profile with:
+  - `dotnet-counters`
+  - `dotnet-trace`
+- Minimize allocations and unnecessary object creation.
+- Cache wisely using **IMemoryCache** or distributed caches (Redis).
+
+---
+
+## Concurrency and Async Safety
+- Use **async/await** consistently.
+- Avoid shared mutable state.
+- Protect shared resources with proper synchronization primitives.
+- Ensure all background tasks support **cancellation tokens**.
+- Prevent memory leaks by properly scoping hosted services and background workers.
+
+---
+
+## Tooling and Dependencies
+- Prefer **.NET built-in libraries** when possible.
+- Use **NuGet lock files** for deterministic builds.
+- Keep dependencies minimal and up to date.
+- Integrate in CI:
+  - Build
+  - Test
+  - Lint
+  - Security scanning (`dotnet list package --vulnerable`)
+
+---
+
+## Key Conventions
+1. Prioritize **readability, simplicity, and maintainability**.
+2. Design for **change** and evolving requirements.
+3. Maintain **clear architectural boundaries**.
+4. Ensure all behavior is **testable, observable, and documented**.
+5. **Automate** testing, building, and deployment pipelines.
+
+---
+
+**Goal:** Build ASP.NET Core 10 services that are clean, scalable, secure, observable, and resilient by design.

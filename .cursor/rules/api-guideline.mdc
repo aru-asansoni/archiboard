@@ -1,0 +1,1076 @@
+# REST API Development Standards
+
+## 1. Purpose and Scope
+
+This document defines the standard guidelines for designing, implementing, and maintaining RESTful Web APIs. The objective is to ensure consistency, scalability, security, and long-term evolvability across all API implementations.
+
+All APIs **must be documented and exposed in English**, using clear, precise, and consistent terminology.
+
+---
+
+## 2. Core Design Principles
+
+Modern Web applications expose APIs that allow clients to interact with application services and data. A well-designed API must adhere to the following principles.
+
+### 2.1 Platform Independence
+
+APIs must be consumable by any client, regardless of implementation language or platform. This requires:
+
+* Adoption of standard and widely supported protocols
+* Clear agreement on data formats exchanged between client and server
+
+### 2.2 Service Evolvability
+
+APIs must be able to evolve independently of client applications:
+
+* New functionality must not break existing clients
+* Backward compatibility must be preserved whenever possible
+* All exposed capabilities must be discoverable
+
+---
+
+## 3. URI Structure
+
+URIs follow the standard structure:
+
+```
+URI = scheme:[//authority]path[?query][#fragment]
+
+authority = [userinfo@]host[:port]
+```
+
+URI design is fundamental for correct resource modeling and for enabling future versioning strategies.
+
+---
+
+## 4. REST Architectural Style
+
+REST (Representational State Transfer), introduced by Roy Fielding, is an architectural style for building distributed systems based on hypermedia.
+
+Services that comply with REST constraints are referred to as **RESTful services**.
+
+### 4.1 REST Constraints
+
+#### Client–Server
+
+* Clear separation of concerns
+* Independent evolution of clients and servers
+
+#### Statelessness
+
+* Each request must be self-contained
+* No client state is stored on the server
+* Exception: authenticated session state persisted in a datastore
+
+#### Cacheability
+
+* Responses must explicitly or implicitly define cache behavior
+* Cache lifetime must be clearly communicated
+
+#### Layered System
+
+* Clients must not be aware of intermediaries
+* Intermediaries may include proxies, gateways, or load balancers
+
+#### Code on Demand (Optional)
+
+* Servers may extend client functionality by sending executable code (e.g., JavaScript)
+
+#### Uniform Interface
+
+The Uniform Interface constraint reduces coupling and architectural complexity and consists of:
+
+1. **Resource Identification**
+   Resources are uniquely identified by URIs and are separate from their representations.
+
+2. **Resource Representations**
+   A representation provides sufficient information to modify or delete the resource.
+
+3. **Self-Descriptive Messages**
+   Each message includes enough information to be processed correctly (e.g., media type).
+
+4. **HATEOAS (Hypermedia as the Engine of Application State)**
+   Clients dynamically discover available actions through links embedded in responses.
+
+---
+
+## 5. REST and HTTP
+
+REST is protocol-agnostic, but HTTP is the most commonly used protocol for RESTful APIs.
+
+Key benefits include:
+
+* Use of open standards
+* Technology-agnostic clients and servers
+* Broad tooling and language support
+
+---
+
+## 6. Resource Modeling
+
+### 6.1 Resources
+
+Resources represent business entities or domain concepts (e.g., customers, orders).
+
+* Resources must be identified using URIs
+* URIs must use nouns, not verbs
+
+**Correct**
+
+```
+/orders
+```
+
+**Avoid**
+
+```
+/create-order
+```
+
+Resources must not directly expose internal persistence models (e.g., database tables). APIs act as an abstraction layer over internal implementations.
+
+### 6.2 Collections and Members
+
+* Collections are resources that group multiple elements
+* Each collection and each member must have its own URI
+
+Example:
+
+```
+/customers
+/customers/5
+```
+
+### 6.3 Naming Conventions
+
+* Use plural nouns for collections
+* Use lowercase paths
+* For multi-word resource names, use **kebab-case**
+
+Examples:
+
+```
+/product-variants
+/sales-orders
+/purchase-invoices
+```
+
+For legacy systems, existing naming conventions should be preserved. Migration toward this standard should be planned where feasible.
+
+---
+
+## 7. Resource Relationships
+
+Resource relationships must be modeled carefully:
+
+* Simple relationships may be expressed via nested URIs:
+
+  ```
+  /customers/5/orders
+  ```
+* Deeply nested URIs should be avoided
+* Prefer discoverable links in representations (HATEOAS)
+
+URIs should remain stable and resilient to future domain changes.
+
+---
+
+## 8. API Granularity
+
+Avoid overly fragmented APIs that require excessive client requests.
+
+* Combine related data when appropriate
+* Balance response size against latency and bandwidth consumption
+
+---
+
+## 9. HTTP Methods and Semantics
+
+This section defines the normative behavior of HTTP methods as used by this API standard.
+
+### 9.1 GET
+
+A successful `GET` request **must** return HTTP `200 OK`.
+
+* If the requested resource does not exist, the server **must** return `404 Not Found`.
+* `GET` must be safe and idempotent.
+* `GET` requests must not produce side effects.
+
+### 9.2 HEAD
+
+The `HEAD` method behaves identically to `GET`, except that the response **must not** include a message body.
+
+Typical use cases include:
+
+* Verifying the existence of a resource
+* Retrieving metadata (e.g., `ETag`, `Last-Modified`)
+
+### 9.3 POST
+
+When a `POST` request creates a new resource:
+
+* The server **must** return `201 Created`
+* The `Location` response header **must** contain the URI of the newly created resource
+* The response body **should** include a representation of the created resource
+
+When a `POST` request triggers processing without creating a resource:
+
+* Return `200 OK` with a response body containing the result, **or**
+* Return `204 No Content` if no result is produced
+
+For asynchronous processing:
+
+* Return `202 Accepted`
+* The `Location` header **must** reference a resource exposing the processing status
+
+#### Bulk Operations via POST
+
+Bulk operations (e.g., mass updates) are treated as asynchronous processes and **must** use `POST`.
+
+Examples:
+
+* Bulk update by explicit identifiers
+* Bulk update by filter conditions
+
+If the request payload is invalid, the server **must** return `400 Bad Request` with an error representation.
+
+### 9.4 PUT
+
+When a `PUT` request creates a new resource:
+
+* Return `201 Created`
+
+When a `PUT` request updates an existing resource:
+
+* Return `200 OK` or `204 No Content`
+
+If the update cannot be applied due to resource state conflicts:
+
+* Consider returning `409 Conflict`
+
+Bulk updates via `PUT` on collection resources may be supported to reduce request fragmentation and improve performance.
+
+### 9.5 PATCH
+
+`PATCH` applies partial modifications to an existing resource using a *patch document*.
+
+Supported patch formats:
+
+* **JSON Merge Patch** (`application/merge-patch+json`, RFC 7396)
+* **JSON Patch** (`application/json-patch+json`, RFC 6902)
+
+#### PATCH Error Handling
+
+| Condition                                         | HTTP Status                |
+| ------------------------------------------------- | -------------------------- |
+| Unsupported patch media type                      | 415 Unsupported Media Type |
+| Invalid patch document                            | 400 Bad Request            |
+| Patch cannot be applied to current resource state | 409 Conflict               |
+| Preconditions not met (e.g., ETag mismatch)       | 412 Precondition Failed    |
+
+### 9.6 DELETE
+
+When deletion succeeds:
+
+* Return `204 No Content`
+
+If the resource does not exist:
+
+* Return `404 Not Found`
+
+------|------------|
+| GET | Retrieve a resource representation |
+| POST | Create a new resource or trigger processing |
+| PUT | Create or fully replace a resource |
+| PATCH | Partially update a resource |
+| DELETE | Remove a resource |
+
+### 9.2 Method Semantics
+
+* **PUT** must be idempotent
+* **POST** and **PATCH** are not guaranteed to be idempotent
+* Use POST when the server controls resource identifiers
+
+---
+
+## 10. Conditional Requests
+
+Conditional requests allow clients to express preconditions that must be satisfied for an operation to be executed.
+
+They are primarily used to prevent concurrency issues such as *lost updates* and rely on HTTP headers such as:
+
+* `If-Match`
+* `If-None-Match`
+* `If-Modified-Since`
+
+For full details, refer to RFC 7232.
+
+---
+
+## 11. HTTP Status Codes
+
+### 11.1 Status Code Categories
+
+| Category          | Description                                                     |
+| ----------------- | --------------------------------------------------------------- |
+| 1xx Informational | Experimental only; not recommended for production use           |
+| 2xx Success       | The request was successfully received, understood, and accepted |
+| 3xx Redirection   | Further action is required to complete the request              |
+| 4xx Client Error  | The client is responsible for the error                         |
+| 5xx Server Error  | The server failed to fulfill a valid request                    |
+
+### 11.2 Error Representation (Problem Details)
+
+All error responses (4xx and 5xx) **must** use the *Problem Details* format defined in RFC 7807 (`application/problem+json`).
+
+Mandatory fields:
+
+* `type`
+* `title`
+* `status`
+* `detail`
+* `instance`
+
+Additional, problem-specific fields may be included (e.g., validation errors).
+
+---
+
+## 12. Filtering, Sorting, and Pagination
+
+### 12.1 Query Parameters
+
+* Query parameters **must** use `camelCase`
+* Filtering and sorting **must** be performed server-side
+
+### 12.2 Filtering
+
+APIs should support server-side filtering to avoid excessive data transfer.
+
+Example:
+
+```
+/orders?minCost=100
+```
+
+### 12.3 Pagination
+
+Collection resources **must** support pagination.
+
+Recommended parameters:
+
+* `limit`
+* `offset`
+
+Example:
+
+```
+/orders?limit=25&offset=50
+```
+
+Servers may enforce a maximum `limit` to prevent denial-of-service attacks.
+
+Paginated responses **should** include metadata and navigational links (`first`, `last`, `next`, `prev`).
+
+
+
+
+
+
+
+
+# REST API Development Standards
+
+## 1. Purpose and Scope
+
+This document defines the standard guidelines for designing, implementing, and maintaining RESTful Web APIs. The objective is to ensure consistency, scalability, security, and long-term evolvability across all API implementations.
+
+All APIs **must be documented and exposed in English**, using clear, precise, and consistent terminology.
+
+---
+
+## 2. Core Design Principles
+
+Modern Web applications expose APIs that allow clients to interact with application services and data. A well-designed API must adhere to the following principles.
+
+### 2.1 Platform Independence
+
+APIs must be consumable by any client, regardless of implementation language or platform. This requires:
+
+* Adoption of standard and widely supported protocols
+* Clear agreement on data formats exchanged between client and server
+
+### 2.2 Service Evolvability
+
+APIs must be able to evolve independently of client applications:
+
+* New functionality must not break existing clients
+* Backward compatibility must be preserved whenever possible
+* All exposed capabilities must be discoverable
+
+---
+
+## 3. URI Structure
+
+URIs follow the standard structure:
+
+```
+URI = scheme:[//authority]path[?query][#fragment]
+
+authority = [userinfo@]host[:port]
+```
+
+URI design is fundamental for correct resource modeling and for enabling future versioning strategies.
+
+---
+
+## 4. REST Architectural Style
+
+REST (Representational State Transfer), introduced by Roy Fielding, is an architectural style for building distributed systems based on hypermedia.
+
+Services that comply with REST constraints are referred to as **RESTful services**.
+
+### 4.1 REST Constraints
+
+#### Client–Server
+
+* Clear separation of concerns
+* Independent evolution of clients and servers
+
+#### Statelessness
+
+* Each request must be self-contained
+* No client state is stored on the server
+* Exception: authenticated session state persisted in a datastore
+
+#### Cacheability
+
+* Responses must explicitly or implicitly define cache behavior
+* Cache lifetime must be clearly communicated
+
+#### Layered System
+
+* Clients must not be aware of intermediaries
+* Intermediaries may include proxies, gateways, or load balancers
+
+#### Code on Demand (Optional)
+
+* Servers may extend client functionality by sending executable code (e.g., JavaScript)
+
+#### Uniform Interface
+
+The Uniform Interface constraint reduces coupling and architectural complexity and consists of:
+
+1. **Resource Identification**
+   Resources are uniquely identified by URIs and are separate from their representations.
+
+2. **Resource Representations**
+   A representation provides sufficient information to modify or delete the resource.
+
+3. **Self-Descriptive Messages**
+   Each message includes enough information to be processed correctly (e.g., media type).
+
+4. **HATEOAS (Hypermedia as the Engine of Application State)**
+   Clients dynamically discover available actions through links embedded in responses.
+
+---
+
+## 5. REST and HTTP
+
+REST is protocol-agnostic, but HTTP is the most commonly used protocol for RESTful APIs.
+
+Key benefits include:
+
+* Use of open standards
+* Technology-agnostic clients and servers
+* Broad tooling and language support
+
+---
+
+## 6. Resource Modeling
+
+### 6.1 Resources
+
+Resources represent business entities or domain concepts (e.g., customers, orders).
+
+* Resources must be identified using URIs
+* URIs must use nouns, not verbs
+
+**Correct**
+
+```
+/orders
+```
+
+**Avoid**
+
+```
+/create-order
+```
+
+Resources must not directly expose internal persistence models (e.g., database tables). APIs act as an abstraction layer over internal implementations.
+
+### 6.2 Collections and Members
+
+* Collections are resources that group multiple elements
+* Each collection and each member must have its own URI
+
+Example:
+
+```
+/customers
+/customers/5
+```
+
+### 6.3 Naming Conventions
+
+* Use plural nouns for collections
+* Use lowercase paths
+* For multi-word resource names, use **kebab-case**
+
+Examples:
+
+```
+/product-variants
+/sales-orders
+/purchase-invoices
+```
+
+For legacy systems, existing naming conventions should be preserved. Migration toward this standard should be planned where feasible.
+
+---
+
+## 7. Resource Relationships
+
+Resource relationships must be modeled carefully:
+
+* Simple relationships may be expressed via nested URIs:
+
+  ```
+  /customers/5/orders
+  ```
+* Deeply nested URIs should be avoided
+* Prefer discoverable links in representations (HATEOAS)
+
+URIs should remain stable and resilient to future domain changes.
+
+---
+
+## 8. API Granularity
+
+Avoid overly fragmented APIs that require excessive client requests.
+
+* Combine related data when appropriate
+* Balance response size against latency and bandwidth consumption
+
+---
+
+## 9. HTTP Methods and Semantics
+
+This section defines the normative behavior of HTTP methods as used by this API standard.
+
+### 9.1 GET
+
+A successful `GET` request **must** return HTTP `200 OK`.
+
+* If the requested resource does not exist, the server **must** return `404 Not Found`.
+* `GET` must be safe and idempotent.
+* `GET` requests must not produce side effects.
+
+### 9.2 HEAD
+
+The `HEAD` method behaves identically to `GET`, except that the response **must not** include a message body.
+
+Typical use cases include:
+
+* Verifying the existence of a resource
+* Retrieving metadata (e.g., `ETag`, `Last-Modified`)
+
+### 9.3 POST
+
+When a `POST` request creates a new resource:
+
+* The server **must** return `201 Created`
+* The `Location` response header **must** contain the URI of the newly created resource
+* The response body **should** include a representation of the created resource
+
+When a `POST` request triggers processing without creating a resource:
+
+* Return `200 OK` with a response body containing the result, **or**
+* Return `204 No Content` if no result is produced
+
+For asynchronous processing:
+
+* Return `202 Accepted`
+* The `Location` header **must** reference a resource exposing the processing status
+
+#### Bulk Operations via POST
+
+Bulk operations (e.g., mass updates) are treated as asynchronous processes and **must** use `POST`.
+
+Examples:
+
+* Bulk update by explicit identifiers
+* Bulk update by filter conditions
+
+If the request payload is invalid, the server **must** return `400 Bad Request` with an error representation.
+
+### 9.4 PUT
+
+When a `PUT` request creates a new resource:
+
+* Return `201 Created`
+
+When a `PUT` request updates an existing resource:
+
+* Return `200 OK` or `204 No Content`
+
+If the update cannot be applied due to resource state conflicts:
+
+* Consider returning `409 Conflict`
+
+Bulk updates via `PUT` on collection resources may be supported to reduce request fragmentation and improve performance.
+
+### 9.5 PATCH
+
+`PATCH` applies partial modifications to an existing resource using a *patch document*.
+
+Supported patch formats:
+
+* **JSON Merge Patch** (`application/merge-patch+json`, RFC 7396)
+* **JSON Patch** (`application/json-patch+json`, RFC 6902)
+
+#### PATCH Error Handling
+
+| Condition                                         | HTTP Status                |
+| ------------------------------------------------- | -------------------------- |
+| Unsupported patch media type                      | 415 Unsupported Media Type |
+| Invalid patch document                            | 400 Bad Request            |
+| Patch cannot be applied to current resource state | 409 Conflict               |
+| Preconditions not met (e.g., ETag mismatch)       | 412 Precondition Failed    |
+
+### 9.6 DELETE
+
+When deletion succeeds:
+
+* Return `204 No Content`
+
+If the resource does not exist:
+
+* Return `404 Not Found`
+
+------|------------|
+| GET | Retrieve a resource representation |
+| POST | Create a new resource or trigger processing |
+| PUT | Create or fully replace a resource |
+| PATCH | Partially update a resource |
+| DELETE | Remove a resource |
+
+### 9.2 Method Semantics
+
+* **PUT** must be idempotent
+* **POST** and **PATCH** are not guaranteed to be idempotent
+* Use POST when the server controls resource identifiers
+
+---
+
+## 10. Conditional Requests
+
+Conditional requests allow clients to express preconditions that must be satisfied for an operation to be executed.
+
+They are primarily used to prevent concurrency issues such as *lost updates* and rely on HTTP headers such as:
+
+* `If-Match`
+* `If-None-Match`
+* `If-Modified-Since`
+
+For full details, refer to RFC 7232.
+
+---
+
+## 11. HTTP Status Codes
+
+### 11.1 Status Code Categories
+
+| Category          | Description                                                     |
+| ----------------- | --------------------------------------------------------------- |
+| 1xx Informational | Experimental only; not recommended for production use           |
+| 2xx Success       | The request was successfully received, understood, and accepted |
+| 3xx Redirection   | Further action is required to complete the request              |
+| 4xx Client Error  | The client is responsible for the error                         |
+| 5xx Server Error  | The server failed to fulfill a valid request                    |
+
+### 11.2 Error Representation (Problem Details)
+
+All error responses (4xx and 5xx) **must** use the *Problem Details* format defined in RFC 7807 (`application/problem+json`).
+
+Mandatory fields:
+
+* `type`
+* `title`
+* `status`
+* `detail`
+* `instance`
+
+Additional, problem-specific fields may be included (e.g., validation errors).
+
+---
+
+## 12. Filtering, Sorting, and Pagination
+
+### 12.1 Query Parameters
+
+* Query parameters **must** use `camelCase`
+* Filtering and sorting **must** be performed server-side
+
+### 12.2 Filtering
+
+APIs should support server-side filtering to avoid excessive data transfer.
+
+Example:
+
+```
+/orders?minCost=100
+```
+
+### 12.3 Pagination
+
+Collection resources **must** support pagination.
+
+Recommended parameters:
+
+* `limit`
+* `offset`
+
+Example:
+
+```
+/orders?limit=25&offset=50
+```
+
+Servers may enforce a maximum `limit` to prevent denial-of-service attacks.
+
+Paginated responses **should** include metadata and navigational links (`first`, `last`, `next`, `prev`).
+
+---
+
+## 13. Sorting, Field Projection, and Defaults
+
+### 13.1 Sorting
+
+APIs may support server-side sorting by accepting a `sort` query parameter whose value is the name of the field to sort by.
+
+Example:
+
+```
+/orders?sort=productId
+```
+
+Sorting direction may be specified using an additional parameter:
+
+* `order` or `sortOrder`
+* Allowed values: `asc`, `desc`
+
+Example:
+
+```
+/orders?sort=productId&order=asc
+```
+
+⚠️ **Caching Considerations**
+
+Query string parameters are part of the resource identifier and are therefore used as cache keys by most HTTP caching implementations. Excessive or highly variable sorting parameters may negatively impact cache efficiency.
+
+### 13.2 Field Projection
+
+To reduce payload size when resources contain many fields, APIs may support *field projection* via a query parameter that accepts a comma-separated list of fields.
+
+Example:
+
+```
+/orders?fields=productId,quantity
+```
+
+### 13.3 Default Values
+
+All optional query parameters **should** have meaningful default values.
+
+Recommended defaults:
+
+* `limit`: `10`
+* `offset`: `0`
+* `sort`: primary key of the resource
+* `fields`: all resource fields
+
+---
+
+## 14. RPC-Style Operations
+
+In some scenarios it may appear convenient to expose APIs using verbs (e.g., `compute`, `start`, `stop`, `convert`).
+
+Whenever possible, RPC-style operations **should** be modeled as RESTful commands on *surrogate resources*.
+
+Examples:
+
+* **Reserve credit on a user wallet**
+  Instead of:
+
+  `POST /account/wallet/123/reserve-credit`
+
+  Prefer:
+
+  `POST /account/wallet/123/transactions`
+
+* **Disable a mailbox service**
+  Instead of:
+
+  `POST /services/mailbox/123/disable-domain`
+
+  Prefer:
+
+  `PATCH /services/mailbox/123` with body `{ "status": "disabled" }`
+
+* **Start invoice batch processing**
+  Instead of:
+
+  `POST /invoicing/aruba/start-invoicing`
+
+  Prefer:
+
+  `POST /invoicing/aruba/invoicing-batches`
+
+---
+
+## 15. OData and GraphQL
+
+Technologies such as **OData** and **GraphQL** may be suitable for specific use cases but do not fully adhere to REST constraints.
+
+Their adoption **requires prior approval** from the Software Architecture team and must include:
+
+* A clear analysis of pros and cons
+* An implementation strategy
+* Risk mitigation measures related to client-driven dynamism
+
+---
+
+## 16. HATEOAS
+
+One of the core principles of REST is that clients should be able to navigate the entire set of resources without prior knowledge of URI structures.
+
+Each `GET` response **should** include hypermedia links that:
+
+* Identify related resources
+* Describe available operations
+* Drive the application state forward
+
+This principle is known as **HATEOAS (Hypertext as the Engine of Application State)**.
+
+There is currently no single standard for modeling HATEOAS. The examples provided illustrate one possible approach.
+
+### 16.1 HAL (Hypertext Application Language)
+
+The **HAL** specification may be used in combination with HATEOAS to standardize hypermedia responses.
+
+HAL uses:
+
+* `_links` to describe relationships
+* `_embedded` to inline related resources
+
+---
+
+## 17. Versioning
+
+APIs are expected to evolve over time. Versioning strategies **must** balance backward compatibility with innovation.
+
+### 17.1 Breaking Changes
+
+An API represents a contract. Any change that impacts backward compatibility is considered a *breaking change*.
+
+Examples of breaking changes include:
+
+* Removing or renaming endpoints
+* Adding mandatory parameters or fields without defaults
+* Removing fields
+* Changing data types or allowed value ranges
+* Modifying error semantics
+
+Additive changes (e.g., optional fields with defaults) are not necessarily breaking.
+
+### 17.2 Version vs Release
+
+* **Version**: public API contract
+* **Release**: internal software deployment version
+
+---
+
+## 18. Versioning Strategies
+
+Supported strategies include:
+
+### 18.1 URI Path Versioning
+
+```
+/v1/orders
+```
+
+### 18.2 Query String Versioning
+
+```
+/orders?api-version=1.0
+```
+
+### 18.3 Header Versioning
+
+```
+Custom-Header: api-version=1
+```
+
+### 18.4 Media Type Versioning
+
+```
+Accept: application/vnd.example.v1+json
+```
+
+Media type versioning is the most REST-compliant approach and works naturally with HATEOAS.
+
+### 18.5 Recommended Approach
+
+* Services behind the same DNS endpoint **must** use the same versioning strategy
+* If URL paths are unstable, version **must** be embedded in the path
+* Responses **should** include `api-supported-versions` and `api-deprecated-versions` headers
+
+---
+
+## 19. Asynchronous Operations
+
+Long-running operations **should** be implemented asynchronously.
+
+* Return `202 Accepted`
+* Include a status endpoint in the `Location` header
+
+Upon completion:
+
+* Return `303 See Other` pointing to the resulting resource
+
+The status endpoint **may** expose:
+
+* Current state
+* Estimated completion time
+* A cancellation link
+
+---
+
+## 20. OpenAPI
+
+All APIs **should** be described using **OpenAPI**.
+
+* Contract-first is recommended but not mandatory
+* Tooling may generate documentation and client SDKs
+
+---
+
+## 21. File Transfer
+
+Prefer S3-compatible storage solutions for large file handling.
+
+If file transfer via HTTP is required:
+
+* Use `multipart/form-data` for uploads
+* Use appropriate `Content-Type` for downloads
+* Enforce strict payload size limits
+
+---
+
+## 22. Logging and Tracing
+
+Use standardized corporate tooling for logging and tracing.
+
+Distributed tracing **should** leverage OpenTelemetry-compatible systems such as Prometheus and Jaeger.
+
+---
+
+## 23. Asynchronous Request–Reply Pattern
+
+This pattern enables clients to track long-running operations without blocking.
+
+### When to Use
+
+* Browser-based clients
+* Firewall-restricted environments
+* Legacy integrations
+
+### Key Requirements
+
+* Return `202 Accepted`
+* Provide polling endpoint
+* Support `Retry-After`
+* Persist final success or failure state
+
+This pattern is not suitable when real-time updates or callbacks are available.
+
+# HTTP methods: Safety and Idempotency
+
+<https://stackoverflow.com/a/45019073/6488608>
+
+Idempotency is a property of HTTP methods.
+
+A request method is considered idempotent if the intended effect on the server of multiple identical requests with that method is the same as the effect for a single such request. And it's worthwhile to mention that idempotency is about the effect produced on the state of the resource on the server and not about the response status code received by the client.
+
+To illustrate this, consider the DELETE method, which is defined as idempotent. Now consider a client performs a DELETE request to delete a resource from the server. The server processes the request, the resource gets deleted and the server returns 204. Then the client repeats the same DELETE request and, as the resource has already been deleted, the server returns 404.
+
+Despite the different status code received by the client, the effect produced by a single DELETE request is the same effect of multiple DELETE requests to the same URI.
+
+Finally, requests with idempotent methods can be repeated automatically if a communication failure occurs before the client is able to read the server's response. The client knows that repeating the request will have the same intended effect, even if the original request succeeded, though the response might be different.
+
+## RFC 7231
+
+Let's have a look at the [RFC 7231](https://www.rfc-editor.org/rfc/rfc7231), the document defines the semantics and the content of the HTTP/1.1 protocol. See the quotes below (highlights are author's).
+
+HTTP methods can be **safe**:
+
+[**4.2.1. Safe Methods**](https://www.rfc-editor.org/rfc/rfc7231#section-4.2.1)
+
+**Request methods are considered "safe" if their defined semantics are essentially read-only**; i.e., the client does not request, and does not expect, any state change on the origin server as a result of applying a safe method to a target resource. \[...\]
+
+This definition of safe methods does not prevent an implementation from including behavior that is potentially harmful, that is not entirely read-only, or that causes side effects while invoking a safe method. What is important, however, is that the client did not request that additional behavior and cannot be held accountable for it. \[...\]
+
+Of the request methods defined by this specification, the GET, HEAD, OPTIONS, and TRACE methods are defined to be safe. \[...\]
+
+And/or **idempotent**:
+
+[**4.2.2. Idempotent Methods**](https://www.rfc-editor.org/rfc/rfc7231#section-4.2.2)
+
+**A request method is considered "idempotent" if the intended effect on the server of multiple identical requests with that method is the same as the effect for a single such request**. Of the request methods defined by this specification, PUT, DELETE, and safe request methods are idempotent. \[...\]
+
+Like the definition of safe, the idempotent property only applies to what has been requested by the user; a server is free to log each request separately, retain a revision control history, or implement other non-idempotent side effects for each idempotent request. \[...\]
+
+Summarizing, the HTTP methods are classified as [following](https://www.rfc-editor.org/rfc/rfc7231#section-8.1.3):
+
++---------+------+------------+
+
+| Method | Safe | Idempotent |
+
++---------+------+------------+
+
+| CONNECT | no | no |
+
+| DELETE | no | yes |
+
+| GET | yes | yes |
+
+| HEAD | yes | yes |
+
+| OPTIONS | yes | yes |
+
+| POST | no | no |
+
+| PUT | no | yes |
+
+| TRACE | yes | yes |
+
++---------+------+------------+
+
+## RFC 5789
+
+The [RFC 5789](https://www.rfc-editor.org/rfc/rfc5789) defines the [PATCH](https://www.rfc-editor.org/rfc/rfc5789#section-2) method, which is neither safe nor idempotent. However, to prevent collisions, [PATCH](https://www.rfc-editor.org/rfc/rfc5789#section-2) requests can be issued such a way as to be idempotent, as quoted below:
+
+A PATCH request can be issued in such a way as to be idempotent, which also helps prevent bad outcomes from collisions between two PATCH requests on the same resource in a similar time frame. Collisions from multiple PATCH requests may be more dangerous than PUT collisions because some patch formats need to operate from a known base-point or else they will corrupt the resource. Clients using this kind of patch application SHOULD use a conditional request such that the request will fail if the resource has been updated since the client last accessed the resource. For example, the client can use a strong ETag in an If-Match header on the PATCH request.
