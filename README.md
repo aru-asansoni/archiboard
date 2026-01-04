@@ -1,2 +1,2 @@
-# arch-ive
+# archiboard
 Architecture configuration manager
