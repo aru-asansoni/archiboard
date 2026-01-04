@@ -1,0 +1,41 @@
+<div class="visualization">
+  <div class="header">
+    <h1>Architecture Visualization</h1>
+    <button (click)="loadData()" class="btn btn-primary">Refresh</button>
+  </div>
+
+  <div *ngIf="loading" class="loading">Loading architecture data...</div>
+
+  <div #svgContainer class="svg-container"></div>
+
+  <div class="legend">
+    <h3>Legend</h3>
+    <div class="legend-items">
+      <div class="legend-item">
+        <span class="legend-color" style="background: #4CAF50;"></span>
+        <span>Workload</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-color" style="background: #2196F3;"></span>
+        <span>Broker</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-color" style="background: #FF9800;"></span>
+        <span>Topic</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-color" style="background: #9C27B0;"></span>
+        <span>API</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-color" style="background: #F44336;"></span>
+        <span>Database</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-color" style="background: #00BCD4;"></span>
+        <span>Runtime</span>
+      </div>
+    </div>
+  </div>
+</div>
+

@@ -1,0 +1,27 @@
+<div class="workload-list">
+  <div class="header">
+    <h1>Workloads</h1>
+    <a routerLink="/workloads/new" class="btn btn-primary">Create New Workload</a>
+  </div>
+
+  <div *ngIf="loading" class="loading">Loading...</div>
+
+  <div *ngIf="!loading && workloads.length === 0" class="empty-state">
+    <p>No workloads found. Create your first workload!</p>
+  </div>
+
+  <div *ngIf="!loading && workloads.length > 0" class="workload-grid">
+    <div *ngFor="let workload of workloads" class="workload-card">
+      <h3>{{ workload.name }}</h3>
+      <p><strong>Repo:</strong> {{ workload.repoUrl }}</p>
+      <p><strong>Tag:</strong> {{ workload.tag }}</p>
+      <p><strong>Runtime:</strong> {{ workload.runtime?.name || 'N/A' }}</p>
+      <div class="actions">
+        <a [routerLink]="['/workloads', workload.id]" class="btn btn-sm">View</a>
+        <a [routerLink]="['/workloads', workload.id, 'edit']" class="btn btn-sm">Edit</a>
+        <button (click)="deleteWorkload(workload.id)" class="btn btn-sm btn-danger">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+

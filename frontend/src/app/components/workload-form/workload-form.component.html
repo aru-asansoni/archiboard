@@ -1,0 +1,111 @@
+<div class="workload-form">
+  <div class="header">
+    <h1>{{ isEdit ? 'Edit' : 'Create' }} Workload</h1>
+    <a routerLink="/workloads" class="btn btn-secondary">Back to List</a>
+  </div>
+
+  <form *ngIf="!loading" (ngSubmit)="save()" class="form">
+    <div class="form-group">
+      <label>Name *</label>
+      <input type="text" [(ngModel)]="workload.name" name="name" required>
+    </div>
+
+    <div class="form-group">
+      <label>Repository URL</label>
+      <input type="url" [(ngModel)]="workload.repoUrl" name="repoUrl">
+    </div>
+
+    <div class="form-group">
+      <label>Tag</label>
+      <input type="text" [(ngModel)]="workload.tag" name="tag">
+    </div>
+
+    <div class="form-group">
+      <label>Runtime</label>
+      <select [(ngModel)]="workload.runtimeId" name="runtimeId">
+        <option [value]="undefined">None</option>
+        <option *ngFor="let runtime of runtimes" [value]="runtime.id">{{ runtime.name }} ({{ runtime.version }})</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>Software Components</label>
+      <div class="checkbox-list">
+        <label *ngFor="let comp of softwareComponents" class="checkbox-item">
+          <input type="checkbox" 
+                 [checked]="isSelected(workload.softwareComponentIds || [], comp.id)"
+                 (change)="toggleSelection(workload.softwareComponentIds || [], comp.id)">
+          {{ comp.name }} ({{ comp.version }})
+        </label>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>APIs Exposed</label>
+      <div class="checkbox-list">
+        <label *ngFor="let api of apis" class="checkbox-item">
+          <input type="checkbox"
+                 [checked]="isSelected(workload.apisExposedIds || [], api.id)"
+                 (change)="toggleSelection(workload.apisExposedIds || [], api.id)">
+          {{ api.name }} ({{ api.version }})
+        </label>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>APIs Invoked</label>
+      <div class="checkbox-list">
+        <label *ngFor="let api of apis" class="checkbox-item">
+          <input type="checkbox"
+                 [checked]="isSelected(workload.apisInvokedIds || [], api.id)"
+                 (change)="toggleSelection(workload.apisInvokedIds || [], api.id)">
+          {{ api.name }} ({{ api.version }})
+        </label>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Consume Messages From</label>
+      <div class="checkbox-list">
+        <label *ngFor="let mc of messageConnections" class="checkbox-item">
+          <input type="checkbox"
+                 [checked]="isSelected(workload.consumeMessageFromIds || [], mc.id)"
+                 (change)="toggleSelection(workload.consumeMessageFromIds || [], mc.id)">
+          {{ mc.topic?.name || 'Unknown Topic' }}
+        </label>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Produce Messages To</label>
+      <div class="checkbox-list">
+        <label *ngFor="let mc of messageConnections" class="checkbox-item">
+          <input type="checkbox"
+                 [checked]="isSelected(workload.produceMessageToIds || [], mc.id)"
+                 (change)="toggleSelection(workload.produceMessageToIds || [], mc.id)">
+          {{ mc.topic?.name || 'Unknown Topic' }}
+        </label>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Databases</label>
+      <div class="checkbox-list">
+        <label *ngFor="let db of databases" class="checkbox-item">
+          <input type="checkbox"
+                 [checked]="isSelected(workload.databaseIds || [], db.id)"
+                 (change)="toggleSelection(workload.databaseIds || [], db.id)">
+          {{ db.name }} ({{ db.technology }})
+        </label>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary" [disabled]="loading">Save</button>
+      <a routerLink="/workloads" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+
+  <div *ngIf="loading" class="loading">Loading...</div>
+</div>
+

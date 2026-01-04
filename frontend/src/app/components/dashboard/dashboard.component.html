@@ -1,0 +1,10 @@
+<div class="dashboard">
+  <h1>Archiboard - Architecture Configuration Manager</h1>
+  <div class="entity-grid">
+    <a *ngFor="let entity of entities" [routerLink]="entity.route" class="entity-card">
+      <span class="entity-icon">{{ entity.icon }}</span>
+      <span class="entity-name">{{ entity.name }}</span>
+    </a>
+  </div>
+</div>
+

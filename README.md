@@ -141,3 +141,59 @@ Follow some configuration items that capture a possible architecture:
   - SQLite  
   - Neo4J
 
+graph TD
+
+%% Message broker and topic
+topicA[topic-a]
+kafka[kafka]
+messageBroker[message-broker]
+kafkaVersion["version = 1234"]
+
+topicA -- serves --> kafka
+kafka -- is-served-by --> topicA
+
+kafka -- is-a --> messageBroker
+kafka -- has-a --> kafkaVersion
+
+%% Application consuming topic
+app001[app-001]
+topicA -- is-consumed-by --> app001
+app001 -- consumes --> topicA
+
+%% Kubernetes hosting app
+k8s001[k8s-001]
+app001 -- is-hosted-on --> k8s001
+k8s001 -- hosts --> app001
+
+%% Kafka hosting on VM
+vm001a[vm-001]
+kafka -- is-hosted-on --> vm001a
+vm001a -- hosts --> kafka
+
+%% Virtual machines and hypervisor
+virtualMachine[virtual-machine]
+hypervisor[hypervisor]
+hypervisorKind["kind = hyper-v"]
+hypervisorVersion["version = 1234"]
+
+vm001a -- is-a --> virtualMachine
+virtualMachine -- uses --> hypervisor
+hypervisor -- is-used-by --> virtualMachine
+
+hypervisor -- has-a --> hypervisorKind
+hypervisorKind -- has-a --> hypervisorVersion
+
+%% Cluster composition
+cluster001[cluster-001]
+vm001b[vm-001]
+vm001c[vm-001]
+
+cluster001 -- comprises --> vm001b
+vm001b -- is-comprised-of --> cluster001
+
+cluster001 -- comprises --> vm001c
+vm001c -- is-comprised-of --> cluster001
+
+%% Kubernetes hosted on cluster
+k8s001 -- is-hosted-on --> cluster001
+cluster001 -- hosts --> k8s001

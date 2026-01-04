@@ -1,0 +1,47 @@
+.dashboard {
+  padding: 2rem;
+}
+
+.dashboard h1 {
+  margin-bottom: 2rem;
+  color: #333;
+}
+
+.entity-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1.5rem;
+}
+
+.entity-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  text-decoration: none;
+  color: #333;
+  transition: all 0.3s ease;
+  min-height: 150px;
+}
+
+.entity-card:hover {
+  border-color: #007bff;
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.15);
+  transform: translateY(-2px);
+}
+
+.entity-icon {
+  font-size: 3rem;
+  margin-bottom: 0.5rem;
+}
+
+.entity-name {
+  font-size: 1.1rem;
+  font-weight: 500;
+  text-align: center;
+}
+
